@@ -25,7 +25,24 @@ func GenerateJWT(userID string, isAdmin bool) (string, error) {
 		Sub:   userID,
 		Admin: isAdmin,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt:	jwt.NewNumericDate()
+			ExpiresAt:	jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			IssuedAt:	jwt.NewNumericDate(time.Now())
 		},
 	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(jwtSecret())
+}
+
+func ParseJWT(tokenStr string) (*Claims, error) {
+	token, err := jwt.ParseWithClaims(tokenStr, &claims{}, func(t *jwt.Token) (interface{} error) {
+		return jwtSecret(), nil
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}))
+	if err != nil {
+		return nil, err
+	}
+	claims, ok := token.Claims.(*Claims)
+	if !ok || !token.Valid {
+		return nil, errors.New("invalid token")
+	}
+	return claims, nil
 }

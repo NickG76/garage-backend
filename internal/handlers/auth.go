@@ -59,6 +59,7 @@ type loginReq struct {
     Password string `json:"password"`
 }
 
+
 func (s *Server) Login(w http.ResponseWriter, r *http.Request) {
     var req loginReq
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -83,6 +84,19 @@ func (s *Server) Login(w http.ResponseWriter, r *http.Request) {
         http.Error(w, "token error", http.StatusInternalServerError)
         return
     }
-    json.NewEncoder(w).Encode(map[string]any{"token": token})
+	type u struct {
+		Name  string `json:"name"`
+		Email string `json:"email"`
+		Phone string `json:"phone"`
+	}
+	type userDetails struct {
+		User u
+	}
+	returnedUser := u {
+		Name: 	user.Name,
+		Email:   user.Email,
+		Phone:   user.Phone,
+	}
+	json.NewEncoder(w).Encode(map[string]any{"token": token, "user": userDetails{returnedUser}})
 }
 

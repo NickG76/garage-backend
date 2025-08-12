@@ -14,8 +14,23 @@ RETURNING *;
 -- name: GetAppointmentsForUser :many
 SELECT * FROM appointments WHERE user_id = $1 ORDER BY created_at DESC;
 
--- name: GetAllAppointments :many
-SELECT * FROM appointments ORDER BY created_at DESC;
-
 -- name: UpdateAppointmentStatus :exec
 UPDATE appointments SET status = $2 WHERE id = $1;
+
+-- name: SetAdmin :exec
+UPDATE users SET is_admin = $2 WHERE email = $1;
+
+-- name: GetAllAppointments :many
+SELECT
+  a.id,
+  a.user_id,
+  a.datetime,
+  a.description,
+  a.status,
+  a.created_at,
+  u.name AS user_name,
+  u.email AS user_email,
+  u.phone AS user_phone
+FROM appointments a
+JOIN users u ON a.user_id = u.id
+ORDER BY a.created_at DESC;

@@ -4,7 +4,7 @@ package handlers
 import (
 	"context"
 
-	"github.com/nickg76/garage-backend/auth"
+	"github.com/nickg76/garage-backend/internal/auth"
 )
 
 func WithUser(ctx context.Context, userID string, isAdmin bool) context.Context {
@@ -13,7 +13,7 @@ func WithUser(ctx context.Context, userID string, isAdmin bool) context.Context 
 	return ctx
 }
 
-func GetUser(ctx context.Context) (string bool) {
+func GetUser(ctx context.Context) (string, bool) {
 	id, _ := ctx.Value(auth.UserIDKey).(string)
 	admin, _ := ctx.Value(auth.AdminKey).(bool)
 	return id, admin

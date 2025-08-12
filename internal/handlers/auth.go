@@ -88,15 +88,36 @@ func (s *Server) Login(w http.ResponseWriter, r *http.Request) {
 		Name  string `json:"name"`
 		Email string `json:"email"`
 		Phone string `json:"phone"`
+		IsAdmin sql.NullBool `json:"is_admin"`
 	}
 	type userDetails struct {
 		User u
 	}
+
 	returnedUser := u {
 		Name: 	user.Name,
 		Email:   user.Email,
 		Phone:   user.Phone,
+		IsAdmin: user.IsAdmin,
 	}
-	json.NewEncoder(w).Encode(map[string]any{"token": token, "user": userDetails{returnedUser}})
+
+	json.NewEncoder(w).Encode(map[string]any{"token": token, "user": returnedUser })
+
 }
 
+type meResp struct {
+	ID 		string `json:"id"`
+	Admin 	bool   `json:"admin"`
+}
+
+func (s *Server) Me(w http.ResponseWriter, r *http.Request) {
+	userID, isAdmin := GetUser(r.Context())
+	if userID == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	json.NewEncoder(w).Encode(meResp{
+		ID:		userID,
+		Admin:	isAdmin,
+	})
+}

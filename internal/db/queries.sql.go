@@ -83,18 +83,42 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 }
 
 const getAllAppointments = `-- name: GetAllAppointments :many
-SELECT id, user_id, datetime, description, status, created_at FROM appointments ORDER BY created_at DESC
+SELECT
+  a.id,
+  a.user_id,
+  a.datetime,
+  a.description,
+  a.status,
+  a.created_at,
+  u.name AS user_name,
+  u.email AS user_email,
+  u.phone AS user_phone
+FROM appointments a
+JOIN users u ON a.user_id = u.id
+ORDER BY a.created_at DESC
 `
 
-func (q *Queries) GetAllAppointments(ctx context.Context) ([]Appointment, error) {
+type GetAllAppointmentsRow struct {
+	ID          uuid.UUID
+	UserID      uuid.NullUUID
+	Datetime    time.Time
+	Description sql.NullString
+	Status      string
+	CreatedAt   time.Time
+	UserName    string
+	UserEmail   string
+	UserPhone   string
+}
+
+func (q *Queries) GetAllAppointments(ctx context.Context) ([]GetAllAppointmentsRow, error) {
 	rows, err := q.db.QueryContext(ctx, getAllAppointments)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Appointment
+	var items []GetAllAppointmentsRow
 	for rows.Next() {
-		var i Appointment
+		var i GetAllAppointmentsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
@@ -102,6 +126,9 @@ func (q *Queries) GetAllAppointments(ctx context.Context) ([]Appointment, error)
 			&i.Description,
 			&i.Status,
 			&i.CreatedAt,
+			&i.UserName,
+			&i.UserEmail,
+			&i.UserPhone,
 		); err != nil {
 			return nil, err
 		}
@@ -167,6 +194,20 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const setAdmin = `-- name: SetAdmin :exec
+UPDATE users SET is_admin = $2 WHERE email = $1
+`
+
+type SetAdminParams struct {
+	Email   string
+	IsAdmin sql.NullBool
+}
+
+func (q *Queries) SetAdmin(ctx context.Context, arg SetAdminParams) error {
+	_, err := q.db.ExecContext(ctx, setAdmin, arg.Email, arg.IsAdmin)
+	return err
 }
 
 const updateAppointmentStatus = `-- name: UpdateAppointmentStatus :exec

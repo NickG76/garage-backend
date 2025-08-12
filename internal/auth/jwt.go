@@ -26,7 +26,7 @@ func GenerateJWT(userID string, isAdmin bool) (string, error) {
 		Admin: isAdmin,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt:	jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-			IssuedAt:	jwt.NewNumericDate(time.Now())
+			IssuedAt:	jwt.NewNumericDate(time.Now()),
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -34,7 +34,7 @@ func GenerateJWT(userID string, isAdmin bool) (string, error) {
 }
 
 func ParseJWT(tokenStr string) (*Claims, error) {
-	token, err := jwt.ParseWithClaims(tokenStr, &claims{}, func(t *jwt.Token) (interface{} error) {
+	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {
 		return jwtSecret(), nil
 	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}))
 	if err != nil {

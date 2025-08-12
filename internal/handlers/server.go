@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"github.com/joho/godotenv"
 
 	"github.com/nickg76/garage-backend/internal/auth"
 	"github.com/nickg76/garage-backend/internal/db"
@@ -22,6 +23,10 @@ type Server struct {
 }
 
 func NewServer() *Server {
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("No .env file found, relying on environment variables")
+	}
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
 		log.Fatal("DATABASE_URL not set")

@@ -7,9 +7,15 @@ RETURNING *;
 SELECT * FROM users WHERE email = $1;
 
 -- name: CreateAppointment :one
-INSERT INTO appointments (id, user_id, datetime, description)
-VALUES ($1, $2, $3, $4)
+INSERT INTO appointments (id, user_id, datetime, title, description)
+VALUES ($1, $2, $3, $5, $4)
 RETURNING *;
+
+-- name: DeleteAppointment :exec
+DELETE FROM appointments WHERE id = $1;
+
+-- name: GetUserByID :one
+SELECT * FROM users WHERE id = $1;
 
 -- name: GetAppointmentsForUser :many
 SELECT * FROM appointments WHERE user_id = $1 ORDER BY created_at DESC;
@@ -25,6 +31,7 @@ SELECT
   a.id,
   a.user_id,
   a.datetime,
+  a.title,
   a.description,
   a.status,
   a.created_at,
@@ -34,3 +41,8 @@ SELECT
 FROM appointments a
 JOIN users u ON a.user_id = u.id
 ORDER BY a.created_at DESC;
+
+-- name: GetAppointmentsByID :one
+SELECT id, user_id, datetime, title, description, status, created_at
+FROM appointments
+WHERE id = $1;

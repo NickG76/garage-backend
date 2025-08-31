@@ -15,6 +15,7 @@ import (
 
 type createApptReq struct {
     Datetime    string `json:"datetime"`    // RFC3339
+	Title		string `json:"title"`
     Description string `json:"description"` // optional
 }
 
@@ -45,6 +46,7 @@ func (s *Server) CreateAppointment(w http.ResponseWriter, r *http.Request) {
         ID:          uuid.New(),
         UserID:      nu,
         Datetime:    t,
+		Title: 		 req.Title,
         Description: sql.NullString{String: req.Description, Valid: req.Description != ""},
     })
     if err != nil {
@@ -121,7 +123,66 @@ func (s *Server) AdminUpdateStatus(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+	appt, err := s.queries.GetAppointmentsByID(r.Context(), uid)
+	if err == nil {
+		// notify the appointment's user if present
+		if appt.UserID.Valid {
+			s.publishToUser(r.Context(), appt.UserID.UUID.String(), Event{
+				Type:			"appointment_status",
+				Appointment: 	appt.ID.String(),
+				Status: 		req.Status,
+				Message:		"Your appointment status was updated",
+			})
+		}
+	}
+
     w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) UserDeleteAppointment(w http.ResponseWriter, r *http.Request) {
+	userID, _ := GetUser(r.Context())
+	if userID == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	// Expected path: /api/appointments/{id}
+	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	// Validate the exact shape of the path
+	if len(parts) != 3 || parts[0] != "api" || parts[1] != "appointments" {
+		http.Error(w, "bad path", http.StatusBadRequest)
+		return
+	}
+
+	idStr := parts[2]
+	uid, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	nu, err := toNullUUID(userID)
+	if err != nil {
+		http.Error(w, "invalid user id", http.StatusBadRequest)
+		return
+	}
+
+	// Ensure the appointment belongs to the user
+	appt, err := s.queries.GetAppointmentsByID(r.Context(), uid)
+	if err != nil {
+		http.Error(w, "appointment not found", http.StatusNotFound)
+		return
+	}
+	if !appt.UserID.Valid || appt.UserID.UUID.String() != nu.UUID.String() {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
+	if err := s.queries.DeleteAppointment(r.Context(), uid); err != nil {
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+	
 }
 
 // --- Helpers ---
@@ -146,6 +207,7 @@ type appointmentDTO struct {
     ID          string `json:"id"`
     UserID      string `json:"user_id"`
     Datetime    string `json:"datetime"`
+	Title       string `json:"title"`
     Description string `json:"description"`
     Status      string `json:"status"`
     CreatedAt   string `json:"created_at"`
@@ -160,6 +222,7 @@ func toApptDTO(a db.Appointment) appointmentDTO {
         ID:          a.ID.String(),
         UserID:      nullUUID(a.UserID),
         Datetime:    a.Datetime.Format(time.RFC3339),
+		Title:       a.Title,
         Description: nullStr(a.Description),
         Status:      a.Status,
         CreatedAt:   a.CreatedAt.Format(time.RFC3339),
@@ -184,6 +247,7 @@ func toApptDTOAdmin(a db.GetAllAppointmentsRow) appointmentDTO {
         ID:          a.ID.String(),
         UserID:      nullUUID(a.UserID),
         Datetime:    a.Datetime.Format(time.RFC3339),
+		Title:       a.Title,
         Description: nullStr(a.Description),
         Status:      a.Status,
         CreatedAt:   a.CreatedAt.Format(time.RFC3339),

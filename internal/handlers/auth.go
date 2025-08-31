@@ -108,6 +108,9 @@ func (s *Server) Login(w http.ResponseWriter, r *http.Request) {
 type meResp struct {
 	ID 		string `json:"id"`
 	Admin 	bool   `json:"admin"`
+	Email  string `json:"email,omitempty"`
+	Phone  string `json:"phone,omitempty"`
+	Name   string `json:"name,omitempty"`
 }
 
 func (s *Server) Me(w http.ResponseWriter, r *http.Request) {
@@ -116,8 +119,39 @@ func (s *Server) Me(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
+	userIDParsed, err := uuid.Parse(userID)
+	if err != nil {
+		http.Error(w, "invalid user id", http.StatusBadRequest)
+		return
+	}
+
+	user, err := s.queries.GetUserByID(r.Context(), userIDParsed)
+	if err != nil {
+		http.Error(w, "user not found", http.StatusNotFound)
+		return
+	}
+	type u struct {
+		Name  string `json:"name"`
+		Email string `json:"email"`
+		Phone string `json:"phone"`
+		IsAdmin sql.NullBool `json:"is_admin"`
+	}
+	type userDetails struct {
+		User u
+	}
+
+	returnedUser := u {
+		Name: 	user.Name,
+		Email:   user.Email,
+		Phone:   user.Phone,
+		IsAdmin: user.IsAdmin,
+	}
+
 	json.NewEncoder(w).Encode(meResp{
 		ID:		userID,
 		Admin:	isAdmin,
+		Name:	returnedUser.Name,
+		Email:	returnedUser.Email,
+		Phone:	returnedUser.Phone,
 	})
 }

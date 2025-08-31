@@ -15,6 +15,7 @@ type Appointment struct {
 	ID          uuid.UUID
 	UserID      uuid.NullUUID
 	Datetime    time.Time
+	Title       string
 	Description sql.NullString
 	Status      string
 	CreatedAt   time.Time

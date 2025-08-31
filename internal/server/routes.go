@@ -18,6 +18,7 @@ func Routes(s *handlers.Server) http.Handler {
     mux.Handle("GET /api/me", s.AuthMiddleware(http.HandlerFunc(s.Me)))
     mux.Handle("GET /api/appointments", s.AuthMiddleware(http.HandlerFunc(s.GetMyAppointments)))
     mux.Handle("POST /api/appointments", s.AuthMiddleware(http.HandlerFunc(s.CreateAppointment)))
+	mux.Handle("DELETE /api/appointments/", s.AuthMiddleware(http.HandlerFunc(s.UserDeleteAppointment)))
 
     // Admin routes
     adminList := s.AuthMiddleware(s.AdminOnly(http.HandlerFunc(s.AdminListAppointments)))
@@ -26,6 +27,9 @@ func Routes(s *handlers.Server) http.Handler {
     mux.Handle("PATCH /api/admin/appointments/", adminUpdate)
     adminUpdateAdmins := s.AuthMiddleware(s.AdminOnly(http.HandlerFunc(s.UpdateAdminAccountsHandler)))
     mux.Handle("POST /api/admin/update-admins", adminUpdateAdmins)
+	
+	// SSE events (JWT via query params)
+	mux.HandleFunc("GET /api/events", s.Events)
 
     // --- Frontend routes fallback ---
     mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -49,12 +53,12 @@ func cors(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
         w.Header().Set("Access-Control-Allow-Origin", "*")
         w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-        w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS")
+        w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS, DELETE")
         if r.Method == "OPTIONS" {
             w.WriteHeader(http.StatusNoContent)
             return
         }
         next.ServeHTTP(w, r)
     })
-}
 
+}

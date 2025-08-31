@@ -20,6 +20,7 @@ import (
 type Server struct {
 	db 		*sqlx.DB
 	queries *db.Queries
+	hub 	*EventHub
 }
 
 func NewServer() *Server {
@@ -35,6 +36,7 @@ func NewServer() *Server {
 	return &Server{
 		db:		 conn,
 		queries: db.New(conn.DB),
+		hub:	 NewEventHub(),
 	}
 }
 

@@ -13,6 +13,7 @@ CREATE TABLE appointments (
     id UUID PRIMARY KEY,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     datetime TIMESTAMP NOT NULL,
+    title TEXT NOT NULL,
     description TEXT,
     status TEXT NOT NULL DEFAULT 'pending', -- PENDING, ACCEPTED, REJECTED
     created_at TIMESTAMP NOT NULL DEFAULT now()

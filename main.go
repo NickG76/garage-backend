@@ -1,4 +1,4 @@
-//main.go
+// main.go
 package main
 
 import (
@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/joho/godotenv"
 	"github.com/nickg76/garage-backend/internal/handlers"
 	"github.com/nickg76/garage-backend/internal/server"
-	"github.com/joho/godotenv"
 )
 
 func main() {

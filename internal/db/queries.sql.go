@@ -14,9 +14,9 @@ import (
 )
 
 const createAppointment = `-- name: CreateAppointment :one
-INSERT INTO appointments (id, user_id, datetime, description)
-VALUES ($1, $2, $3, $4)
-RETURNING id, user_id, datetime, description, status, created_at
+INSERT INTO appointments (id, user_id, datetime, title, description)
+VALUES ($1, $2, $3, $5, $4)
+RETURNING id, user_id, datetime, title, description, status, created_at
 `
 
 type CreateAppointmentParams struct {
@@ -24,6 +24,7 @@ type CreateAppointmentParams struct {
 	UserID      uuid.NullUUID
 	Datetime    time.Time
 	Description sql.NullString
+	Title       string
 }
 
 func (q *Queries) CreateAppointment(ctx context.Context, arg CreateAppointmentParams) (Appointment, error) {
@@ -32,12 +33,14 @@ func (q *Queries) CreateAppointment(ctx context.Context, arg CreateAppointmentPa
 		arg.UserID,
 		arg.Datetime,
 		arg.Description,
+		arg.Title,
 	)
 	var i Appointment
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.Datetime,
+		&i.Title,
 		&i.Description,
 		&i.Status,
 		&i.CreatedAt,
@@ -82,11 +85,21 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const deleteAppointment = `-- name: DeleteAppointment :exec
+DELETE FROM appointments WHERE id = $1
+`
+
+func (q *Queries) DeleteAppointment(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteAppointment, id)
+	return err
+}
+
 const getAllAppointments = `-- name: GetAllAppointments :many
 SELECT
   a.id,
   a.user_id,
   a.datetime,
+  a.title,
   a.description,
   a.status,
   a.created_at,
@@ -102,6 +115,7 @@ type GetAllAppointmentsRow struct {
 	ID          uuid.UUID
 	UserID      uuid.NullUUID
 	Datetime    time.Time
+	Title       string
 	Description sql.NullString
 	Status      string
 	CreatedAt   time.Time
@@ -123,6 +137,7 @@ func (q *Queries) GetAllAppointments(ctx context.Context) ([]GetAllAppointmentsR
 			&i.ID,
 			&i.UserID,
 			&i.Datetime,
+			&i.Title,
 			&i.Description,
 			&i.Status,
 			&i.CreatedAt,
@@ -143,8 +158,29 @@ func (q *Queries) GetAllAppointments(ctx context.Context) ([]GetAllAppointmentsR
 	return items, nil
 }
 
+const getAppointmentsByID = `-- name: GetAppointmentsByID :one
+SELECT id, user_id, datetime, title, description, status, created_at
+FROM appointments
+WHERE id = $1
+`
+
+func (q *Queries) GetAppointmentsByID(ctx context.Context, id uuid.UUID) (Appointment, error) {
+	row := q.db.QueryRowContext(ctx, getAppointmentsByID, id)
+	var i Appointment
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Datetime,
+		&i.Title,
+		&i.Description,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getAppointmentsForUser = `-- name: GetAppointmentsForUser :many
-SELECT id, user_id, datetime, description, status, created_at FROM appointments WHERE user_id = $1 ORDER BY created_at DESC
+SELECT id, user_id, datetime, title, description, status, created_at FROM appointments WHERE user_id = $1 ORDER BY created_at DESC
 `
 
 func (q *Queries) GetAppointmentsForUser(ctx context.Context, userID uuid.NullUUID) ([]Appointment, error) {
@@ -160,6 +196,7 @@ func (q *Queries) GetAppointmentsForUser(ctx context.Context, userID uuid.NullUU
 			&i.ID,
 			&i.UserID,
 			&i.Datetime,
+			&i.Title,
 			&i.Description,
 			&i.Status,
 			&i.CreatedAt,
@@ -183,6 +220,25 @@ SELECT id, name, email, password_hash, phone, is_admin, created_at FROM users WH
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
 	row := q.db.QueryRowContext(ctx, getUserByEmail, email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Phone,
+		&i.IsAdmin,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getUserByID = `-- name: GetUserByID :one
+SELECT id, name, email, password_hash, phone, is_admin, created_at FROM users WHERE id = $1
+`
+
+func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByID, id)
 	var i User
 	err := row.Scan(
 		&i.ID,

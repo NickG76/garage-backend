@@ -23,6 +23,9 @@ SELECT * FROM appointments WHERE user_id = $1 ORDER BY created_at DESC;
 -- name: UpdateAppointmentStatus :exec
 UPDATE appointments SET status = $2 WHERE id = $1;
 
+-- name: UserUpdateAppointment :exec
+UPDATE appointments SET datetime = $2, title = $3, description = $4 WHERE user_id = $5 AND id = $1;
+
 -- name: SetAdmin :exec
 UPDATE users SET is_admin = $2 WHERE email = $1;
 

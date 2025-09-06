@@ -16,7 +16,7 @@ import (
 type createApptReq struct {
     Datetime    string `json:"datetime"`    // RFC3339
 	Title		string `json:"title"`
-    Description string `json:"description"` // optional
+    Description string `json:"description"` // optional }
 }
 
 func (s *Server) CreateAppointment(w http.ResponseWriter, r *http.Request) {
@@ -185,6 +185,86 @@ func (s *Server) UserDeleteAppointment(w http.ResponseWriter, r *http.Request) {
 	
 }
 
+// internal/handlers/appointments.go
+
+// ... existing code ...
+
+func (s *Server) UserEditAppointment(w http.ResponseWriter, r *http.Request) {
+	userID, _ := GetUser(r.Context())
+	if userID == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	// Expected path: /api/appointments/{id}
+	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(parts) != 3 || parts[0] != "api" || parts[1] != "appointments" {
+		http.Error(w, "bad path", http.StatusBadRequest)
+		return
+	}
+
+	idStr := parts[2]
+	uid, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	var req createApptReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid body", http.StatusBadRequest)
+		return
+	}
+	t, err := time.Parse(time.RFC3339, req.Datetime)
+	if err != nil {
+		http.Error(w, "invalid datetime", http.StatusBadRequest)
+		return
+	}
+	nu, err := toNullUUID(userID)
+	if err != nil {
+		http.Error(w, "invalid user id", http.StatusBadRequest)
+		return
+	}
+
+	// Ensure the appointment belongs to the user
+	appt, err := s.queries.GetAppointmentsByID(r.Context(), uid)
+	if err != nil {
+		http.Error(w, "appointment not found", http.StatusNotFound)
+		return
+	}
+	if !appt.UserID.Valid || appt.UserID.UUID.String() != nu.UUID.String() {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
+    // --- Start of Fix ---
+
+	// First, execute the update. This function only returns an error.
+	err = s.queries.UserUpdateAppointment(r.Context(), db.UserUpdateAppointmentParams{
+		ID:          uid,
+		Datetime:    t,
+		Title:       req.Title,
+		Description: sql.NullString{String: req.Description, Valid: req.Description != ""},
+		UserID:      nu,
+	})
+	if err != nil {
+		http.Error(w, "db error on update", http.StatusInternalServerError)
+		return
+	}
+
+	// Then, fetch the newly updated appointment to return it.
+	updatedAppt, err := s.queries.GetAppointmentsByID(r.Context(), uid)
+	if err != nil {
+		http.Error(w, "db error on fetch after update", http.StatusInternalServerError)
+		return
+	}
+
+    // --- End of Fix ---
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(toApptDTO(updatedAppt))
+}
+
+// ... rest of the file ...
 // --- Helpers ---
 
 func nullStr(ns sql.NullString) string {

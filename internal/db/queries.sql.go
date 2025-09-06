@@ -279,3 +279,26 @@ func (q *Queries) UpdateAppointmentStatus(ctx context.Context, arg UpdateAppoint
 	_, err := q.db.ExecContext(ctx, updateAppointmentStatus, arg.ID, arg.Status)
 	return err
 }
+
+const userUpdateAppointment = `-- name: UserUpdateAppointment :exec
+UPDATE appointments SET datetime = $2, title = $3, description = $4 WHERE user_id = $5 AND id = $1
+`
+
+type UserUpdateAppointmentParams struct {
+	ID          uuid.UUID
+	Datetime    time.Time
+	Title       string
+	Description sql.NullString
+	UserID      uuid.NullUUID
+}
+
+func (q *Queries) UserUpdateAppointment(ctx context.Context, arg UserUpdateAppointmentParams) error {
+	_, err := q.db.ExecContext(ctx, userUpdateAppointment,
+		arg.ID,
+		arg.Datetime,
+		arg.Title,
+		arg.Description,
+		arg.UserID,
+	)
+	return err
+}

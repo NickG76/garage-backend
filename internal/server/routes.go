@@ -3,6 +3,7 @@ package server
 
 import (
 	"net/http"
+	"path/filepath"
 
 	"github.com/nickg76/garage-backend/internal/handlers"
 )
@@ -32,19 +33,18 @@ func Routes(s *handlers.Server) http.Handler {
 	mux.HandleFunc("GET /api/events", s.Events)
 	//
 	// // --- Frontend routes fallback ---
-	// mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-	//     // Attempt to serve static file
-	//     staticPath := filepath.Join("public", r.URL.Path)
-	//     if info, err := os.Stat(staticPath); err == nil && !info.IsDir() {
-	//         http.ServeFile(w, r, staticPath)
-	//         return
-	//     }
-	//
-	//     // If not a file, fallback to React index.html
-	//     http.ServeFile(w, r, "public/index.html")
-	// })
-	//
-	// return cors(mux)
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	    // Attempt to serve static file
+	    staticPath := filepath.Join("public", r.URL.Path)
+	    if info, err := os.Stat(staticPath); err == nil && !info.IsDir() {
+	        http.ServeFile(w, r, staticPath)
+	        return
+	    }
+
+	    // If not a file, fallback to React index.html
+	    http.ServeFile(w, r, "public/index.html")
+	})
+
 	return cors(mux)
 }
 

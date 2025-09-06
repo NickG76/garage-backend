@@ -3,6 +3,7 @@ package server
 
 import (
 	"net/http"
+	"os"
 	"path/filepath"
 
 	"github.com/nickg76/garage-backend/internal/handlers"
@@ -26,9 +27,8 @@ func Routes(s *handlers.Server) http.Handler {
 	adminUpdate := s.AuthMiddleware(s.AdminOnly(http.HandlerFunc(s.AdminUpdateStatus)))
 	mux.Handle("GET /api/admin/appointments", adminList)
 	mux.Handle("PATCH /api/admin/appointments/", adminUpdate)
-	// adminUpdateAdmins := s.AuthMiddleware(s.AdminOnly(http.HandlerFunc(s.UpdateAdminAccountsHandler)))
-	// mux.Handle("POST /api/admin/update-admins", adminUpdateAdmins)
 
+	s.SetAdminAccountsFromEnv()
 	// SSE events (JWT via query params)
 	mux.HandleFunc("GET /api/events", s.Events)
 	//
@@ -45,40 +45,26 @@ func Routes(s *handlers.Server) http.Handler {
 	    http.ServeFile(w, r, "public/index.html")
 	})
 
-	return cors(mux)
+	// return cors(mux)
+	return mux
 }
 
-// // Minimal CORS for dev; adjust as needed or remove if same origin
+
+// // cors is a middleware that handles cross-origin requests.
 // func cors(next http.Handler) http.Handler {
-//     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-//         w.Header().Set("Access-Control-Allow-Origin", "*")
-//         w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-//         w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS, DELETE")
-//         if r.Method == "OPTIONS" {
-//             w.WriteHeader(http.StatusNoContent)
-//             return
-//         }
-//         next.ServeHTTP(w, r)
-//     })
+// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 		// In production, you might want to restrict this to your frontend's domain,
+// 		// e.g., "https://girlingdesign.co.uk"
+// 		w.Header().Set("Access-Control-Allow-Origin", "*")
+// 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+// 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS, DELETE, PUT")
 //
+// 		// Handle preflight requests
+// 		if r.Method == "OPTIONS" {
+// 			w.WriteHeader(http.StatusNoContent)
+// 			return
+// 		}
+//
+// 		next.ServeHTTP(w, r)
+// 	})
 // }
-// Add this function back to internal/server/routes.go
-
-// cors is a middleware that handles cross-origin requests.
-func cors(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// In production, you might want to restrict this to your frontend's domain,
-		// e.g., "https://girlingdesign.co.uk"
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS, DELETE, PUT")
-
-		// Handle preflight requests
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
-}
